@@ -17,7 +17,7 @@
  */
 
 metadata {
-    definition (name: "ZigBee White Color Temperature Bulb", namespace: "smartthings", author: "SmartThings") {
+    definition (name: "ZigBee White Color Temperature Bulb", namespace: "smartthings", author: "SmartThings", runLocally: false, minHubCoreVersion: '000.019.00012', executeCommandsLocally: true) {
 
         capability "Actuator"
         capability "Color Temperature"
@@ -39,15 +39,22 @@ metadata {
         fingerprint profileId: "0104", inClusters: "0000, 0003, 0004, 0005, 0006, 0008, 0300, 0B04, FC0F", outClusters: "0019", manufacturer: "OSRAM", model: "LIGHTIFY A19 Tunable White", deviceJoinName: "SYLVANIA Smart A19 Tunable White"
         fingerprint profileId: "0104", inClusters: "0000, 0003, 0004, 0005, 0006, 0008, 0300, 0B04, FC0F", outClusters: "0019", manufacturer: "OSRAM", model: "Classic B40 TW - LIGHTIFY", deviceJoinName: "OSRAM LIGHTIFY Classic B40 Tunable White"
         fingerprint profileId: "0104", inClusters: "0000, 0003, 0004, 0005, 0006, 0008, 0300, 0702, 0B05", outClusters: "0019", manufacturer: "sengled", model: "Z01-A19NAE26", deviceJoinName: "Sengled Element plus"
+        fingerprint profileId: "0104", inClusters: "0000, 0003, 0004, 0005, 0006, 0008, 0300, 0B04, 0B05, FC01, FC08", outClusters: "0003, 0019", manufacturer: "LEDVANCE", model: "A19 TW 10 year", deviceJoinName: "SYLVANIA Smart 10Y A19 TW"
+        fingerprint profileId: "0104", inClusters: "0000, 0003, 0004, 0005, 0006, 0008, 0300, 0B04, FC0F", outClusters: "0019", manufacturer: "OSRAM", model: "LIGHTIFY Conv Under Cabinet TW", deviceJoinName: "SYLVANIA Smart Convertible Under Cabinet"
+        fingerprint profileId: "0104", inClusters: "0000, 0003, 0004, 0005, 0006, 0008, 0300, 0B04, FC0F", outClusters: "0019", manufacturer: "OSRAM", model: "ColorstripRGBW", deviceJoinName: "SYLVANIA Smart Convertible Under Cabinet"
+        fingerprint profileId: "0104", inClusters: "0000, 0003, 0004, 0005, 0006, 0008, 0300, FC0F", outClusters: "0019", manufacturer: "OSRAM", model: "LIGHTIFY Edge-lit Flushmount TW", deviceJoinName: "SYLVANIA Smart Edge-lit Flushmount TW"
+        fingerprint profileId: "0104", inClusters: "0000, 0003, 0004, 0005, 0006, 0008, 0300, 0B05, FC01", outClusters: "0003, 0019", manufacturer: "LEDVANCE", model: "MR16 TW", deviceJoinName: "SYLVANIA Smart MR16 Tunable White"
+        fingerprint profileId: "0104", inClusters: "0000, 0003, 0004, 0005, 0006, 0008, 0300, 0B04, FC0F", outClusters: "0019", manufacturer: "OSRAM", model: "LIGHTIFY Surface TW", deviceJoinName: "SYLVANIA Smart Surface Tunable White"
+
     }
 
     // UI tile definitions
     tiles(scale: 2) {
         multiAttributeTile(name:"switch", type: "lighting", width: 6, height: 4, canChangeIcon: true){
             tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
-                attributeState "on", label:'${name}', action:"switch.off", icon:"st.switches.light.on", backgroundColor:"#79b821", nextState:"turningOff"
+                attributeState "on", label:'${name}', action:"switch.off", icon:"st.switches.light.on", backgroundColor:"#00A0DC", nextState:"turningOff"
                 attributeState "off", label:'${name}', action:"switch.on", icon:"st.switches.light.off", backgroundColor:"#ffffff", nextState:"turningOn"
-                attributeState "turningOn", label:'${name}', action:"switch.off", icon:"st.switches.light.on", backgroundColor:"#79b821", nextState:"turningOff"
+                attributeState "turningOn", label:'${name}', action:"switch.off", icon:"st.switches.light.on", backgroundColor:"#00A0DC", nextState:"turningOff"
                 attributeState "turningOff", label:'${name}', action:"switch.on", icon:"st.switches.light.off", backgroundColor:"#ffffff", nextState:"turningOn"
             }
             tileAttribute ("device.level", key: "SLIDER_CONTROL") {
@@ -79,7 +86,13 @@ private getATTRIBUTE_COLOR_TEMPERATURE() { 0x0007 }
 // Parse incoming device messages to generate events
 def parse(String description) {
     log.debug "description is $description"
+    // description is on/off: 1
+    if (description == "on/off: 1")
+    	log.warn "Workaround auto switch on: gnoring ${description}"
+    	return
+        
     def event = zigbee.getEvent(description)
+     log.debug event
     if (event) {
         if (event.name=="level" && event.value==0) {}
         else {
@@ -91,7 +104,7 @@ def parse(String description) {
     }
     else {
         def cluster = zigbee.parse(description)
-
+		log.debug cluster
         if (cluster && cluster.clusterId == 0x0006 && cluster.command == 0x07) {
             if (cluster.data[0] == 0x00) {
                 log.debug "ON/OFF REPORTING CONFIG RESPONSE: " + cluster
@@ -109,14 +122,17 @@ def parse(String description) {
 }
 
 def off() {
+	log.debug "entered off()"
     zigbee.off()
 }
 
 def on() {
+	log.debug "entered on()"
     zigbee.on()
 }
 
 def setLevel(value) {
+	log.debug "entered setLevel()"
     zigbee.setLevel(value)
 }
 
@@ -124,10 +140,14 @@ def setLevel(value) {
  * PING is used by Device-Watch in attempt to reach the Device
  * */
 def ping() {
+	log.debug "entered ping()"
+
     return zigbee.onOffRefresh()
 }
 
 def refresh() {
+	log.debug "entered refresh()"
+
     zigbee.onOffRefresh() +
     zigbee.levelRefresh() +
     zigbee.colorTemperatureRefresh() +
@@ -146,17 +166,28 @@ def configure() {
 }
 
 def setColorTemperature(value) {
+    log.debug "enter setColorTemperature"
+
     setGenericName(value)
-	value = value as Integer
+    value = value as Integer
     def tempInMired = (1000000 / value) as Integer
     def finalHex = zigbee.swapEndianHex(zigbee.convertToHexString(tempInMired, 4))
 
-    zigbee.command(COLOR_CONTROL_CLUSTER, MOVE_TO_COLOR_TEMPERATURE_COMMAND, "$finalHex 0000") +
-    zigbee.readAttribute(COLOR_CONTROL_CLUSTER, ATTRIBUTE_COLOR_TEMPERATURE)
+    List cmds = []
+    if (device.getDataValue("manufacturer") == "sengled" && device.getDataValue("model") == "Z01-A19NAE26") {
+        // Sengled Element Plus will ignore the command if the transition time is 0x0000
+        cmds << zigbee.command(COLOR_CONTROL_CLUSTER, MOVE_TO_COLOR_TEMPERATURE_COMMAND, "$finalHex 0100")
+    } else {
+        cmds << zigbee.command(COLOR_CONTROL_CLUSTER, MOVE_TO_COLOR_TEMPERATURE_COMMAND, "$finalHex 0000")
+    }
+    cmds << zigbee.readAttribute(COLOR_CONTROL_CLUSTER, ATTRIBUTE_COLOR_TEMPERATURE)
+    cmds
 }
 
 //Naming based on the wiki article here: http://en.wikipedia.org/wiki/Color_temperature
 def setGenericName(value){
+    log.debug "enter setGenericName"
+
     if (value != null) {
         def genericName = "White"
         if (value < 3300) {
@@ -173,9 +204,12 @@ def setGenericName(value){
 }
 
 def installed() {
+    log.debug "enter installed"
+
     if (((device.getDataValue("manufacturer") == "MRVL") && (device.getDataValue("model") == "MZ100")) || (device.getDataValue("manufacturer") == "OSRAM SYLVANIA") || (device.getDataValue("manufacturer") == "OSRAM")) {
         if ((device.currentState("level")?.value == null) || (device.currentState("level")?.value == 0)) {
-            sendEvent(name: "level", value: 100)
+            sendEvent(name: "level", value: 0)
+            log.debug "Got an Installed again!!!!!!!"
         }
     }
 }
