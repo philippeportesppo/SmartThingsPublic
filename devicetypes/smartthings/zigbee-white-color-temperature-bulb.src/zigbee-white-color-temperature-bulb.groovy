@@ -87,10 +87,15 @@ private getATTRIBUTE_COLOR_TEMPERATURE() { 0x0007 }
 def parse(String description) {
     log.debug "description is $description"
     // description is on/off: 1
-    if (description == "on/off: 1")
+    if (description == "on/off: 1") {
     	log.warn "Workaround auto switch on: gnoring ${description}"
+        if (device.currentState("switch")?.value == "off") {
+        	// force off
+        	off()
+    		}
+
     	return
-        
+        }
     def event = zigbee.getEvent(description)
      log.debug event
     if (event) {
